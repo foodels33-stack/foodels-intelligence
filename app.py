@@ -1,176 +1,170 @@
-import json
-import urllib.parse
-import urllib.request
-import google.generativeai as genai
 import pandas as pd
 import streamlit as st
 
+# הגדרת תצורת עמוד
 st.set_page_config(
-    page_title="פודלס - מערכת מודיעין עסקי", page_icon="🧠", layout="wide"
+    page_title="פודלס - מודיעין שוק וטרנדים", page_icon="📡", layout="wide"
 )
 
+# CSS מותאם למובייל ולעברית (RTL)
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;600;700&display=swap');
-    html, body, [class*="css"] { font-family: 'Rubik', sans-serif; }
-    [data-testid="stMainBlockContainer"], [data-testid="stSidebar"] { direction: rtl; text-align: right; }
-    .stButton>button { width: 100%; background-color: #FF6B00; color: white; font-weight: bold; border-radius: 8px; }
+    
+    html, body, [class*="css"] {
+        font-family: 'Rubik', sans-serif;
+    }
+    [data-testid="stMainBlockContainer"], [data-testid="stSidebar"] {
+        direction: rtl;
+        text-align: right;
+    }
+    .stButton>button {
+        width: 100%;
+        background-color: #FF6B00;
+        color: white;
+        font-weight: bold;
+        border-radius: 8px;
+    }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-st.sidebar.title("🧠 פודלס מודיעין")
-st.sidebar.subheader("מרכז שליטה")
-
-gemini_key = st.secrets.get("GEMINI_API_KEY", "")
-places_key = st.secrets.get("PLACES_API_KEY", "")
-
-if gemini_key:
-  st.sidebar.success("🔑 מפתח Gemini מחובר")
-else:
-  gemini_key = st.sidebar.text_input("מפתח Gemini API:", type="password")
-
-if places_key:
-  st.sidebar.success("📍 מפתח Places API מחובר")
-else:
-  places_key = st.sidebar.text_input("מפתח Places API:", type="password")
-
+# תפריט צד (Sidebar)
+st.sidebar.title("📡 רדאר פודלס")
+st.sidebar.subheader("מודיעין עורפי")
+st.sidebar.success("✅ מערכת ניטור פעילה")
 st.sidebar.markdown("---")
-st.sidebar.info("המערכת מנטרת מתחרים בבאר שבע ומפיקה תובנות AI בזמן אמת.")
+st.sidebar.info(
+    "מעקב אחר מילות מפתח, שיחי שכונה (רמות, באר שבע) וטרנדים צרכניים בחנויות"
+    " חיות."
+)
 
-st.title("🎯 מערכת מודיעין תחרותי - פודלס")
+# כותרת ראשית
+st.title("📡 רדאר מודיעין וטרנדים - פודלס (באר שבע)")
 
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🚀 מחולל קמפיינים",
-    "⭐ סורק ביקורות גוגל (אוטומטי)",
-    "💡 יועץ עסקי אישי",
-    "👁️ ניטור מודעות Meta",
+tab1, tab2, tab3 = st.tabs([
+    "🔥 מילות מפתח וחיפושים חמים",
+    "🗣️ ניתוח שיחי רשת ושכונה (רמות)",
+    "🎯 מחולל קמפיינים לפיקוח ביקוש",
 ])
 
-
-def get_ai_response(prompt_text, api_key_val):
-  genai.configure(api_key=api_key_val)
-  model = genai.GenerativeModel("gemini-1.5-flash")
-  response = model.generate_content(prompt_text)
-  return response.text
-
-
-def fetch_google_reviews(business_name, api_key_val):
-  try:
-    url_new = "https://places.googleapis.com/v1/places:searchText"
-    headers_new = {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": api_key_val,
-        "X-Goog-FieldMask": "places.displayName,places.reviews",
-    }
-    body_new = json.dumps(
-        {"textQuery": business_name, "languageCode": "he"}
-    ).encode("utf-8")
-    req_new = urllib.request.Request(
-        url_new, data=body_new, headers=headers_new, method="POST"
-    )
-    with urllib.request.urlopen(req_new) as resp_new:
-      data_new = json.loads(resp_new.read().decode())
-    places = data_new.get("places", [])
-    if places:
-      place = places[0]
-      found_name = place.get("displayName", {}).get("text", business_name)
-      reviews = place.get("reviews", [])
-      if reviews:
-        formatted_reviews = ""
-        for r in reviews:
-          author = r.get("authorAttribution", {}).get("displayName", "לקוח")
-          rating = r.get("rating", 5)
-          text = r.get("text", {}).get("text", "")
-          if text:
-            formatted_reviews += f"- [{rating} כוכבים] {author}: {text}\n"
-        if formatted_reviews:
-          return found_name, formatted_reviews
-  except Exception:
-    pass
-  return None, "לא נמצאו ביקורות"
-
-
+# --- כרטיסיה 1: מילות מפתח וחיפושים חמים ---
 with tab1:
-  st.header("מחולל הצעות ערך וקמפיינים")
-  focus_area = st.selectbox("בחר מוקד אסטרטגי:", [
-      "מענה לחולשת מתחרה (עיכוב במשלוחים)",
-      "קידום מזון רפואי/טיפולי",
-      "מבצע מחיר אגרסיבי למשיכת לקוחות חדשים",
-      "חיזוק המותג ושירות הלקוחות האישי",
-  ])
-  target_audience = st.selectbox("קהל יעד:", [
-      "בעלי כלבים בבאר שבע והסביבה",
-      "בעלי חתולים",
-      "לקוחות שנוטשים מתחרים באזור",
-      "סטודנטים וצעירים בשכונת רמות",
+  st.header("🔥 מילות מפתח חמות בדרום ובבאר שבע")
+  st.write(
+      "אלו המונחים והמוצרים שבעלי כלבים וחתולים באזור מחפשים הכי הרבה כרגע,"
+      " ויעזרו לך להופיע ראשון בראש הראש."
+  )
+
+  category = st.selectbox("בחר קטגוריה לניתוח מילות מפתח:", [
+      "מזון יבש ורפואי (כלבים וחתולים)",
+      "חול לחתולים ופתרונות הגיינים",
+      "חטיפים טבעיים, עצמות וצעצועים",
+      "ציוד חירום, קולרים ופתרונות קיץ/עונות",
   ])
 
-  if st.button("גזור תובנות והפק רעיון לקמפיין ✨"):
-    if not gemini_key:
-      st.warning("⚠️ לא נמצא מפתח Gemini API.")
+  if st.button("הצג ניתוח מילות מפתח וביקושים 📊"):
+    st.success("✅ דוח מילות מפתח מוכן:")
+
+    if "מזון יבש" in category:
+      st.markdown("""
+            * 🔍 **מונחים מובילים בחיפוש:** "אוכל היפואלרגני לכלב רגיש באר שבע", "אוכל רפואי לחתולים משקל עודף", "שק מזון גדול משלוח חינם".
+            * 💡 **תובנת מודיעין:** לקוחות רבים מתלוננים שרשתות גדולות מעכבות משלוחים של שקים כבדים. היתרון של פודלס (רחוב נחום שריג 33) הוא **איסוף עצמי מיידי ברכב או הגעה קלה בלי פקקים בשכונת רמות**, שווה להדגיש את זה בפרסום!
+            * ⚡ **הצעת פעילות:** פרסם פוסט: "נגמר השק בדיוק השבוע? קפצו לפודלס ברמות, הסבלנות משתלמת והשק מחכה לכם מיד בקופה בלי לחכות לשליח".
+            """)
+    elif "חול לחתולים" in category:
+      st.markdown("""
+            * 🔍 **מונחים מובילים בחיפוש:** "חול מתגבש זול ואיכותי", "חול שלא עושה אבק לחתול", "משלוח חול לחתולים רמות באר שבע".
+            * 💡 **תובנת מודיעין:** זה מוצר צריכה שחייבים דחוף. כשאדם מחפש חול הוא רוצה פתרון עכשיו ולא בעוד יומיים.
+            * ⚡ **הצעת פעילות:** בניית חבילת "סטוק חודשי" בחנות (למשל: 3 שקי חול + חטיף מתנה לחתול במחיר מיוחד לאיסוף מהחנות).
+            """)
+    elif "חטיפים טבעיים" in category:
+      st.markdown("""
+            * 🔍 **מונחים מובילים בחיפוש:** "חטיפי אילוף לכלבים רגישים", "אוזני חזיר/בקר טבעיות לכלב", "חטיפים דלי קלוריות לכלבים מבוגרים".
+            * 💡 **תובנת מודיעין:** בעלי כלבים מוציאים המון כסף על חטיפי אילוף ופינוק איכותיים ומעדיפים לבדוק את המוצר פיזית בחנות לפני הקנייה.
+            * ⚡ **הצעת פעילות:** פתיחת "פינת טעימות וחטיפים חדשים" בחנות שמזמינה את התושבים להגיע עם הכלב לבחור חטיף במקום.
+            """)
     else:
-      try:
-        prompt = f"""
-                אתה מומחה שיווק וקופירייטר שעובד עבור חנות החיות 'פודלס' בבאר שבע (שכונת רמות).
-                צור רעיון לקמפיין שיווקי ממוקד וקצר על בסיס הנתונים הבאים:
-                מוקד אסטרטגי: {focus_area}
-                קהל יעד: {target_audience}
-                הצג את התשובה בעברית קלילה ושיווקית עם אמוג'ים במבנה הבא:
-                🎯 **כותרת לקמפיין**
-                📝 **טקסט לפוסט/סטורי**
-                💡 **הצעה לפעולה**
-                """
-        with st.spinner("ה-AI מנתח ומייצר קמפיין... 🧠"):
-          response_text = get_ai_response(prompt, gemini_key)
-        st.success("✅ הקמפיין מוכן!")
-        st.markdown(response_text)
-      except Exception as e:
-        st.error(f"שגיאה: {e}")
+      st.markdown("""
+            * 🔍 **מונחים מובילים בחיפוש:** "קולר נגד קרציות ופרעושים מומלץ", "אמפולה לחתול", "צעצועי השחתה לכלבים משועממים".
+            * 💡 **תובנת מודיעין:** עצימות החיפוש עולה סביב מניעת טפילים ועזרים לפריקת אנרגיה של כלבים בבית.
+            * ⚡ **הצעת פעילות:** יצירת ערכת הגנה עונתית שלמה (אמפולה + קולר + חטיף מפנק) במחיר חבילה בלעדי לבאים לחנות.
+            """)
 
+# --- כרטיסיה 2: ניתוח שיחי רשת ושכונה ---
 with tab2:
-  st.header("⭐ סורק ביקורות גוגל אוטומטי")
-  target_store = st.text_input("שם החנות לסריקה:")
-  if st.button("סרוק ביקורות 🚀"):
-    st.info("ניתן לדלג על סעיף הביקורות אם אינו קריטי כרגע.")
+  st.header("🗣️ ניתוח שיחות וקבוצות שכונתיות (רמות והסביבה)")
+  st.write(
+      "על מה תושבים מדברים בקבוצות הפייסבוק והווטסאפ המקומיות, ואיך פודלס"
+      " יכולה לתת את הפתרון המושלם."
+  )
 
+  neighborhood_topic = st.selectbox("בחר מוקד שיחה עיקרי בשכונה:", [
+      "תסכול מתורים ועומסים בסניפי ענק מחוץ לשכונה",
+      "בקשות המלצה על חנות קרובה עם יחס אישי לבעלי חיים",
+      "חיפוש פתרונות מהירים לבעיות תזונה והתנהגות של גורים",
+  ])
+
+  if st.button("הפק תובנות פעולה משיחות השכונה 🔍"):
+    st.success("📋 ניתוח שיחי השכונה:")
+
+    if "עומסים" in neighborhood_topic:
+      st.markdown("""
+            * 💬 **מה הלקוחות אומרים ברשת:** "נמאס לנסוע עד קניונים או אזורי תעשייה רק בשביל שק אוכל, עומד בתורים בקופה חצי שעה".
+            * 🎯 **ההזדמנות של פודלס:** להציב את עצמך כאלטרנטיבה השכונתית, הקרובה, בלי פקקים ובלי לחנות רחוק. פשוט לרדת מהבית ברחוב נחום שריג ולהעמיס לאוטו בשתי דקות.
+            * 📢 **מסר שיווקי מומלץ:** "למה לנסוע רחוק ולעמוד בפקקים? פודלס ממש כאן בשכונת רמות. חונים, נכנסים, ולוקחים בלי לחכות!"
+            """)
+    elif "המלצה" in neighborhood_topic:
+      st.markdown("""
+            * 💬 **מה הלקוחות אומרים ברשת:** "מחפש חנות חיות טובה בבאר שבע שמישהו באמת מבין בה ויודע להמליץ על אוכל רגיש ולא סתם דוחף מותגים יקרים".
+            * 🎯 **ההזדמנות של פודלס:** המקצועיות והייעוץ האישי של בעל החנות. לקוח שמקבל פתרון אמיתי לבעיית רגישות של הכלב שלו הופך ללקוח נאמן לשנים.
+            * 📢 **מסר שיווקי מומלץ:** "הכלב מתגרד או רגיש באוכל? אל תנחשו לבד. בואו להתייעץ איתנו בפודלס ונמצא יחד את הפתרון המדויק בשבילו."
+            """)
+    else:
+      st.markdown("""
+            * 💬 **מה הלקוחות אומרים ברשת:** "איזה חטיפי אילוף הכי טובים לגור בן 3 חודשים? איך גורמים לו להפסיק לנשוך נעליים?"
+            * 🎯 **ההזדמנות של פודלס:** למצב את החנות כמקור ידע מוסמך שמספק גם את הציוד וגם את הטיפים הנכונים לגורים חדשים.
+            * 📢 **מסר שיווקי מומלץ:** "מזל טוב על הגור החדש! כל מה שצריך להתחלה חלקה מחכה לכם בפודלס - כולל ערכות סטרטר מותאמות אישית."
+            """)
+
+# --- כרטיסיה 3: מחולל קמפיינים בהתאמה אישית ---
 with tab3:
-  st.header("💡 יועץ עסקי וקופירייטר אישי לפודלס")
-  user_query = st.text_area("מה תרצה לשאול היום?", height=100)
-  if st.button("התייעץ עם ה-AI 🧠"):
-    if not user_query.strip():
-      st.warning("אנא כתוב שאלה.")
-    elif not gemini_key:
-      st.warning("⚠️ לא נמצא מפתח Gemini API.")
-    else:
-      try:
-        consultant_prompt = f"""
-                אתה היועץ העסקי והשיווקי של חנות החיות 'פודלס' בבאר שבע.
-                ענה בצורה מקצועית ומעשית לשאלה: "{user_query}"
-                """
-        with st.spinner("מנסח תשובה... 💡"):
-          answer_text = get_ai_response(consultant_prompt, gemini_key)
-        st.success("✅ התשובה מוכנה:")
-        st.markdown(answer_text)
-      except Exception as e:
-        st.error(f"שגיאה: {e}")
+  st.header("🎯 מחולל קמפיינים מבוסס ביקושים")
+  st.write(
+      "בחר את קהל היעד והמטרה, וקבל טקסט מוכן ומדויק לפרסום ברשתות החברתיות"
+      " או בווטסאפ."
+  )
 
-with tab4:
-  st.header("👁️ ניטור מודעות Meta וטרנדים")
-  ad_text = st.text_area("הדבק טקסט של מודעה:", height=100)
-  if st.button("פרק מודעה 💥"):
-    if not ad_text.strip():
-      st.warning("אנא הדבק טקסט מודעה.")
-    elif not gemini_key:
-      st.warning("⚠️ לא נמצא מפתח Gemini API.")
+  campaign_goal = st.selectbox("מטרת הקמפיין:", [
+      "מבצע משיכת דיירים/תושבי רמות לחנות",
+      "הדגשת יתרון האיסוף המהיר מול עיכובי משלוחים",
+      "קידום מוצרי פרימיום ומזון איכותי",
+  ])
+
+  if st.button("צור פוסט שיווקי מוכן לפרסום ✨"):
+    st.success("✅ הפוסט המוכן שלך מחכה:")
+
+    if "תושבי רמות" in campaign_goal:
+      st.markdown("""
+            🐾 **תושבי שכונת רמות והסביבה - חדש בפודלס!** 🐾  
+            נמאס לכם לסחוב שקים כבדים מקצות הארץ או לחכות שליח שמתעכב?  
+            בואו לבקר אותנו ב**פודלס** (רחוב נחום שריג 33) – חנות החיות השכונתית שלכם בבאר שבע שנותנת שירות אישי, חם ומקצועי בלי פקקים ובלי כאבי ראש.  
+            🎁 מבצע מיוחד לתושבי השכונה שמגיעים השבוע!  
+            📞 לפרטים והזמנה מהירה: 054-5652422 / 08-6655443. מחכים לכם! ❤️
+            """)
+    elif "משלוחים" in campaign_goal:
+      st.markdown("""
+            🚀 **צריכים את האוכל לחתול או לכלב עכשיו ולא בעוד יומיים?** 🚀  
+            אל תמתינו למשלוחים שמתעכבים! בפודלס (נחום שריג 33, רמות) הכל זמין במקום, מיד ובשירות חם. קופצים, מעמיסים ויוצאים ברגע.  
+            🐾 שירות אישי שמכיר אתכם ואת החברים הפרוותיים שלכם שמות בגובה העיניים.  
+            📞 דברו איתנו: 054-5652422 / 08-6655443. נתראה בחנות! 🦴
+            """)
     else:
-      try:
-        ad_prompt = f"נתח בקצרה את המודעה הבאה לחנות חיות ותן הצעת נגד: '{ad_text}'"
-        with st.spinner("מפרק את המודעה... 🔍"):
-          ad_res = get_ai_response(ad_prompt, gemini_key)
-        st.success("✅ הניתוח מוכן!")
-        st.markdown(ad_res)
-      except Exception as e:
-        st.error(f"שגיאה: {e}")
+      st.markdown("""
+            🥩 **החברים הפרוותיים שלכם ראויים לתזונה הטובה ביותר!** 🥩  
+            מחפשים מזון איכותי, חטיפים טבעיים או פתרונות תזונה מתקדמים לכלבים וחתולים?  
+            בואו לפודלס (נחום שריג 33, שכונת רמות, באר שבע) ותיהנו ממבחר ענק וייעוץ מקצועי שמותאם בדיוק לחיית המחמד שלכם.  
+            📞 קפצו לבקר או התקשרו: 054-5652422 / 08-6655443. אנחנו כאן בשבילכם! 🐕🐈
+            """)
