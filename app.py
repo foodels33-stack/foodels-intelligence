@@ -79,9 +79,9 @@ with tab1:
             st.warning("⚠️ לא נמצא מפתח API. ודא שהגדרת GEMINI_API_KEY ב-Secrets ב-Streamlit.")
         else:
             try:
-                # חיבור ל-Gemini API
+                # חיבור ל-Gemini API עם דגם מודל עדכני
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 
                 # הפרומפט המודיעיני ל-AI
                 prompt = f"""
@@ -105,7 +105,7 @@ with tab1:
             except Exception as e:
                 st.error(f"שגיאה בחיבור ל-API. ודא שהמפתח ב-Secrets תקין. שגיאה: {e}")
 
-# --- שאר הכרטיסיות (סימולציות לקראת חיבור סורקים) ---
+# --- שאר הכרטיסיות ---
 with tab2:
     st.header("מעקב מודעות (Meta Ad Library)")
     st.info("כאן יופיעו בהמשך נתונים חיים מסריקת מודעות פייסבוק.")
