@@ -79,27 +79,11 @@ with tab1:
             st.warning("⚠️ לא נמצא מפתח API. ודא שהגדרת GEMINI_API_KEY ב-Secrets ב-Streamlit.")
         else:
             try:
-                # הגדרת מפתח ה-API
+                # חיבור ל-Gemini API
                 genai.configure(api_key=api_key)
                 
-                # זיהוי דינמי של המודלים הנתמכים בחשבון
-                selected_model_name = None
-                try:
-                    for m in genai.list_models():
-                        if 'generateContent' in m.supported_generation_methods:
-                            if 'flash' in m.name:
-                                selected_model_name = m.name
-                                break
-                            if not selected_model_name:
-                                selected_model_name = m.name
-                except Exception:
-                    pass
-                
-                # מודל גיבוי במידה ורשימת המודלים לא זמינה
-                if not selected_model_name:
-                    selected_model_name = 'gemini-2.0-flash'
-
-                model = genai.GenerativeModel(selected_model_name)
+                # עדכון למודל הנתמך בחשבון שלך
+                model = genai.GenerativeModel('gemini-3.8-flash')
                 
                 # הפרומפט המודיעיני ל-AI
                 prompt = f"""
