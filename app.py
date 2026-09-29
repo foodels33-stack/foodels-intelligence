@@ -67,11 +67,10 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 
-# --- פונקציית עזר מעודכנת לחיבור ל-AI ---
+# --- פונקציית עזר מעודכנת לחיבור ל-AI (שימוש ב-gemini-1.5-flash) ---
 def get_ai_response(prompt_text, api_key_val):
   genai.configure(api_key=api_key_val)
-  # שימוש במודל היציב והעדכני
-  model = genai.GenerativeModel("gemini-2.5-flash")
+  model = genai.GenerativeModel("gemini-1.5-flash")
   response = model.generate_content(prompt_text)
   return response.text
 
