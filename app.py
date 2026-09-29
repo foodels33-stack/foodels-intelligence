@@ -67,18 +67,16 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 
-# --- פונקציית עזר לחיבור ל-AI ---
+# --- פונקציית עזר מעודכנת לחיבור ל-AI ---
 def get_ai_response(prompt_text, api_key_val):
   genai.configure(api_key=api_key_val)
-  try:
-    model = genai.GenerativeModel("gemini-3.8-flash")
-    return model.generate_content(prompt_text).text
-  except Exception:
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    return model.generate_content(prompt_text).text
+  # שימוש במודל היציב והעדכני
+  model = genai.GenerativeModel("gemini-2.5-flash")
+  response = model.generate_content(prompt_text)
+  return response.text
 
 
-# --- פונקציה משודרגת לשליפת ביקורות (תומכת גם ב-Places API New) ---
+# --- פונקציה לשליפת ביקורות מגוגל מפות ---
 def fetch_google_reviews(business_name, api_key_val):
   # 1. ניסיון סריקה באמצעות Places API (New)
   try:
@@ -121,9 +119,9 @@ def fetch_google_reviews(business_name, api_key_val):
       if formatted_reviews:
         return found_name, formatted_reviews
   except Exception:
-    pass  # מעבר לגיבוי הקלאסי
+    pass
 
-  # 2. גיבוי: ניסיון סריקה באמצעות Places API הקלאסי
+  # 2. גיבוי: Places API קלאסי
   try:
     encoded_query = urllib.parse.quote(business_name)
     search_url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={encoded_query}&key={api_key_val}&language=he"
@@ -132,20 +130,10 @@ def fetch_google_reviews(business_name, api_key_val):
     with urllib.request.urlopen(req) as response:
       data = json.loads(response.read().decode())
 
-    status = data.get("status")
-    if status == "REQUEST_DENIED":
-      err = data.get("error_message", "")
+    if not data.get("results"):
       return (
           None,
-          "שגיאת הרשאה מול גוגל (REQUEST_DENIED). ודא שפרויקט גוגל מאושר."
-          f" פירוט: {err}",
-      )
-
-    if status == "ZERO_RESULTS" or not data.get("results"):
-      return (
-          None,
-          f"לא נמצא עסק בשם '{business_name}' בגוגל מפות. נסה להקליד שם מלא"
-          " יותר (למשל: 'זולו באר שבע' או 'חנות חיות באר שבע').",
+          f"לא נמצא עסק בשם '{business_name}' בגוגל מפות. נסה שם מדויק יותר.",
       )
 
     place = data["results"][0]
@@ -164,7 +152,7 @@ def fetch_google_reviews(business_name, api_key_val):
     if not reviews:
       return (
           None,
-          f"נמצא העסק '{found_name}', אך אין עבורו ביקורות טקסטואליות פומביות.",
+          f"נמצא העסק '{found_name}', אך אין עבורו ביקורות טקסטואליות.",
       )
 
     formatted_reviews = ""
@@ -206,7 +194,7 @@ with tab1:
     else:
       try:
         prompt = f"""
-                אתה מומחה שיווק וקופירייטר שעובד עבור חנות חיות בשם 'פודלס' בבאר שבע (שכונת רמות).
+                אתה מומחה שיווק וקופירייטר שעובד עבור חנות החיות 'פודלס' בבאר שבע (שכונת רמות).
                 צור רעיון לקמפיין שיווקי ממוקד וקצר על בסיס הנתונים הבאים:
                 מוקד אסטרטגי: {focus_area}
                 קהל יעד: {target_audience}
@@ -236,7 +224,7 @@ with tab2:
 
   target_store = st.text_input(
       "שם החנות לסריקה:",
-      placeholder="למשל: זולו באר שבע / שם המתחרה",
+      placeholder="למשל: פודלס באר שבע / שם המתחרה",
   )
 
   if st.button("סרוק ביקורות ונתח אוטומטית 🚀"):
